@@ -100,7 +100,10 @@ Ext.onReady(function () {
         handler: function () {
             var active = tabs.getActiveTab();
             var values = {};
-            active.items.each(function (field) { values[field.name] = field.getValue(); });
+            active.items.each(function (field) {
+                var name = field.getName ? field.getName() : field.name;
+                if (name) values[name] = field.getValue();
+            });
             var valid = true;
             active.items.each(function (field) { if (!field.validate()) valid = false; });
             if (!valid) return;

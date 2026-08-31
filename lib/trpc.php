@@ -30,8 +30,9 @@ function trpc_error_message($error)
             isset($error['json']['data']['message']) ? $error['json']['data']['message'] : null,
         );
         foreach ($candidates as $candidate) {
-            if (is_string($candidate) && trim($candidate) !== '') {
-                return $candidate;
+            $formatted = trpc_format_message($candidate);
+            if ($formatted !== '') {
+                return $formatted;
             }
         }
 
@@ -42,6 +43,32 @@ function trpc_error_message($error)
     }
 
     return '业务服务器返回了未知错误';
+}
+
+function trpc_format_message($message)
+{
+    if (!is_string($message) || trim($message) === '') {
+        return '';
+    }
+
+    $decoded = json_decode($message, true);
+    if (is_array($decoded)) {
+        $parts = array();
+        foreach ($decoded as $item) {
+            if (is_array($item) && isset($item['message']) && is_string($item['message']) && $item['message'] !== '') {
+                $path = '';
+                if (isset($item['path']) && is_array($item['path']) && $item['path']) {
+                    $path = implode('.', $item['path']) . '：';
+                }
+                $parts[] = $path . $item['message'];
+            }
+        }
+        if ($parts) {
+            return implode('；', $parts);
+        }
+    }
+
+    return $message;
 }
 
 function trpc_error_status($error, $fallback)
@@ -82,15 +109,7 @@ function trpc_call($procedure, $input = null, $isMutation = false, $token = '', 
     }
 
     $ch = curl_init();
-    if ($isMutation) {
-        $headers[] = 'Content-Type: application/json';
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-    } else {
-        $url .= '?input=' . rawurlencode($payload);
-    }
-
-    curl_setopt_array($ch, array(
+    $options = array(
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,
@@ -98,7 +117,17 @@ function trpc_call($procedure, $input = null, $isMutation = false, $token = '', 
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT => isset($config['request_timeout']) ? (int) $config['request_timeout'] : 20,
         CURLOPT_USERAGENT => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'ClassicClient/1.0',
-    ));
+    );
+    if ($isMutation) {
+        $headers[] = 'Content-Type: application/json';
+        $options[CURLOPT_URL] = $url;
+        $options[CURLOPT_HTTPHEADER] = $headers;
+        $options[CURLOPT_POST] = true;
+        $options[CURLOPT_POSTFIELDS] = $payload;
+    } else {
+        $options[CURLOPT_URL] = $url . '?input=' . rawurlencode($payload);
+    }
+    curl_setopt_array($ch, $options);
 
     $raw = curl_exec($ch);
     $curlError = curl_error($ch);

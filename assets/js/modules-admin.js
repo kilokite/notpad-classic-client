@@ -143,22 +143,61 @@
 
     Classic.modules.settings = function () {
         var store = Classic.arrayStore(['key', 'value'], 'key');
-        var grid = new Ext.grid.GridPanel({title: '系统设置', iconCls: 'icon-setting', store: store, stripeRows: true, columns: [
-            {header: '设置项', dataIndex: 'key', width: 240},
-            {header: '设置值', dataIndex: 'value', width: 560, renderer: Classic.html}
-        ], viewConfig: {forceFit: true, emptyText: '暂无自定义设置'}, tbar: [
-            {text: '新增设置', iconCls: 'icon-add', handler: function () { edit(); }},
-            {text: '修改', iconCls: 'icon-edit', handler: function () { var r = Classic.selected(grid); if (r) edit(r); }},
-            {text: '删除', iconCls: 'icon-delete', handler: remove}, '-',
-            {text: '重新统计资料', icon: 'assets/icons/sum.png', handler: function () { Classic.confirm('重新统计可能需要一些时间，确定继续吗？', function () { Classic.api('setting.recalculateStats', null, function (data) { Classic.boot.stats = data || {}; Ext.Msg.alert('提示', '资料统计已经更新。'); }); }); }},
-            '->', {text: '刷新', iconCls: 'icon-refresh', handler: load}
-        ]});
-        function load() { Classic.api('setting.getAll', null, function (data) { var rows = []; if (Ext.isArray(data)) rows = data; else Ext.iterate(data || {}, function (key, value) { rows.push({key: key, value: value}); }); Classic.loadArray(store, rows); }); }
+        var cdnField = new Ext.form.TextField({
+            fieldLabel: '图片 CDN 前缀', name: 'cdn_prefix', anchor: '100%',
+            emptyText: '例如 https://cdn.example.com',
+            value: Classic.boot.assetBaseUrl || ''
+        });
+        var cdnForm = new Ext.form.FormPanel({
+            region: 'north', height: 92, border: false, bodyStyle: 'padding:10px 14px 0', labelWidth: 100,
+            items: [cdnField],
+            buttons: [{text: '保存 CDN 前缀', iconCls: 'icon-save', handler: function () {
+                var value = Ext.util.Format.trim(cdnField.getValue() || '');
+                Classic.api('setting.set', {key: 'cdn_prefix', value: value}, function () {
+                    Classic.setAssetBaseUrl(value);
+                    Ext.Msg.alert('提示', '图片 CDN 前缀已保存，缩略图和大图将立即使用新地址。');
+                    load();
+                });
+            }}]
+        });
+        var grid = new Ext.grid.GridPanel({
+            region: 'center', title: '全部设置项', store: store, stripeRows: true,
+            columns: [
+                {header: '设置项', dataIndex: 'key', width: 240},
+                {header: '设置值', dataIndex: 'value', width: 560, renderer: Classic.html}
+            ],
+            viewConfig: {forceFit: true, emptyText: '暂无自定义设置'},
+            tbar: [
+                {text: '新增设置', iconCls: 'icon-add', handler: function () { edit(); }},
+                {text: '修改', iconCls: 'icon-edit', handler: function () { var r = Classic.selected(grid); if (r) edit(r); }},
+                {text: '删除', iconCls: 'icon-delete', handler: remove}, '-',
+                {text: '重新统计资料', icon: 'assets/icons/sum.png', handler: function () {
+                    Classic.confirm('重新统计可能需要一些时间，确定继续吗？', function () {
+                        Classic.api('setting.recalculateStats', null, function (data) {
+                            Classic.boot.stats = data || {};
+                            Ext.Msg.alert('提示', '资料统计已经更新。');
+                        });
+                    });
+                }},
+                '->', {text: '刷新', iconCls: 'icon-refresh', handler: load}
+            ]
+        });
+        var panel = new Ext.Panel({title: '系统设置', iconCls: 'icon-setting', layout: 'border', items: [cdnForm, grid]});
+        function load() {
+            Classic.api('setting.getAll', null, function (data) {
+                var rows = [];
+                if (Ext.isArray(data)) rows = data;
+                else Ext.iterate(data || {}, function (key, value) { rows.push({key: key, value: value}); });
+                Classic.loadArray(store, rows);
+                Classic.applyCdnPrefix(data || {});
+                cdnField.setValue(Classic.boot.assetBaseUrl || '');
+            });
+        }
         function edit(record) { Classic.windowForm({title: record ? '修改设置' : '新增设置', width: 500, items: [
             {xtype: 'textfield', fieldLabel: '设置项', name: 'key', allowBlank: false, readOnly: !!record, value: record ? record.get('key') : ''},
             {xtype: 'textarea', fieldLabel: '设置值', name: 'value', height: 100, value: record ? record.get('value') : ''}
         ], onSave: function (v, w) { Classic.api('setting.set', v, function () { w.close(); load(); }); }}); }
         function remove() { var r = Classic.selected(grid); if (!r) return; Classic.confirm('确定删除设置项“' + Classic.html(r.id) + '”吗？', function () { Classic.api('setting.remove', {key: String(r.id)}, load); }); }
-        grid.reloadModule = load; grid.on('afterrender', load, grid, {single: true}); return grid;
+        panel.reloadModule = load; panel.on('afterrender', load, panel, {single: true}); return panel;
     };
 }());

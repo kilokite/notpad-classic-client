@@ -121,6 +121,10 @@
       width: 160,
       emptyText: "在当前页查找...",
     });
+    var tagFilter = Classic.tagFilterCombo("notepad", function () {
+      page = 0;
+      load();
+    });
     var grid = new Ext.grid.GridPanel({
       region: "center",
       store: store,
@@ -178,11 +182,15 @@
             Classic.simpleTagManager({
               prefix: "notepad",
               title: "笔记标签管理",
+              onClose: function () {
+                tagFilter.reloadTags();
+              },
             });
           },
         },
         { text: "设置标签", iconCls: "icon-tag", handler: assignTags },
         "->",
+        tagFilter,
         search,
         {
           text: "查找",
@@ -233,7 +241,10 @@
     });
 
     function load() {
-      Classic.api("notepad.getNotes", { page: page }, function (data) {
+      Classic.api(
+        "notepad.getNotes",
+        { page: page, tag_id: tagFilter.getTagId() },
+        function (data) {
         Classic.loadArray(store, data);
         var item = grid.getBottomToolbar().items.itemAt(3);
         if (item)
@@ -708,6 +719,10 @@
         ["file", "文件"],
       ],
     });
+    var tagFilter = Classic.tagFilterCombo("bookmark", function () {
+      offset = 0;
+      load();
+    });
     var grid = new Ext.grid.GridPanel({
       title: "书签列表",
       store: store,
@@ -765,6 +780,9 @@
             Classic.simpleTagManager({
               prefix: "bookmark",
               title: "书签标签管理",
+              onClose: function () {
+                tagFilter.reloadTags();
+              },
             });
           },
         },
@@ -787,6 +805,7 @@
         },
         "->",
         type,
+        tagFilter,
         search,
         {
           text: "查询",
@@ -827,7 +846,7 @@
           sort: "time_desc",
           search: search.getValue(),
           type: type.getValue() || null,
-          tag_id: null,
+          tag_id: tagFilter.getTagId(),
         },
         function (data) {
           Classic.loadArray(store, data);
@@ -947,60 +966,62 @@
       "size",
       "created_at",
     ]);
-    var search = new Ext.form.TextField({ width: 170, emptyText: "图片名称" });
-    var grid = new Ext.grid.GridPanel({
+    var search = new Ext.form.TextField({
+      width: 170,
+      emptyText: "图片名称",
+      listeners: {
+        specialkey: function (field, e) {
+          if (e.getKey() === e.ENTER) {
+            offset = 0;
+            load();
+          }
+        },
+      },
+    });
+    var tagFilter = Classic.tagFilterCombo("image_bed", function () {
+      offset = 0;
+      load();
+    });
+    var view = new Ext.DataView({
+      store: store,
+      autoScroll: true,
+      simpleSelect: true,
+      overClass: "image-thumb-over",
+      selectedClass: "image-thumb-selected",
+      itemSelector: "div.image-thumb",
+      emptyText: '<div class="image-empty">暂无图片记录</div>',
+      deferEmptyText: false,
+      tpl: new Ext.XTemplate(
+        '<div class="image-thumb-wrap">',
+        '<tpl for=".">',
+        '<div class="image-thumb" title="{[Classic.html(values.name)]}">',
+        '<div class="image-thumb-img"><img src="{[Classic.html(Classic.thumbUrl(values.url, 320))]}" alt="{[Classic.html(values.name)]}"></div>',
+        '<div class="image-thumb-name">{[Classic.html(values.name)]}</div>',
+        "</div>",
+        "</tpl>",
+        "</div>",
+      ),
+      listeners: {
+        click: function (dv, index) {
+          var record = store.getAt(index);
+          if (record) previewImage(record);
+        },
+      },
+    });
+    var panel = new Ext.Panel({
       title: "图片管理",
       iconCls: "icon-image",
-      store: store,
-      stripeRows: true,
-      columns: [
-        {
-          header: "预览",
-          dataIndex: "url",
-          width: 62,
-          renderer: function (v) {
-            var url = Classic.assetUrl(v);
-            return url
-              ? '<div class="thumb-cell"><img src="' +
-                  Classic.html(url) +
-                  '"></div>'
-              : "";
-          },
-        },
-        { header: "图片名称", dataIndex: "name", width: 250 },
-        { header: "备注", dataIndex: "remark", width: 280 },
-        {
-          header: "大小",
-          dataIndex: "size",
-          width: 90,
-          renderer: Classic.bytes,
-        },
-        {
-          header: "上传时间",
-          dataIndex: "created_at",
-          width: 140,
-          renderer: Classic.date,
-        },
-        {
-          header: "访问地址",
-          dataIndex: "url",
-          width: 300,
-          renderer: function (v) {
-            return Classic.html(Classic.assetUrl(v));
-          },
-        },
-      ],
-      viewConfig: { forceFit: true, emptyText: "暂无图片记录" },
+      layout: "fit",
+      items: view,
       tbar: [
         { text: "上传图片", iconCls: "icon-upload", handler: uploadImage },
         { text: "重命名", iconCls: "icon-edit", handler: rename },
         {
-          text: "打开图片",
+          text: "查看大图",
           iconCls: "icon-link",
           handler: function () {
-            var r = Classic.selected(grid);
-            if (r && r.get("url"))
-              window.open(Classic.assetUrl(r.get("url")), "_blank");
+            var r = selectedImage();
+            if (r) previewImage(r);
           },
         },
         "-",
@@ -1011,6 +1032,9 @@
             Classic.simpleTagManager({
               prefix: "image_bed",
               title: "图片标签管理",
+              onClose: function () {
+                tagFilter.reloadTags();
+              },
             });
           },
         },
@@ -1018,7 +1042,7 @@
           text: "设置标签",
           iconCls: "icon-tag",
           handler: function () {
-            var r = Classic.selected(grid);
+            var r = selectedImage();
             if (r)
               Classic.assignTags({
                 prefix: "image_bed",
@@ -1032,6 +1056,7 @@
           },
         },
         "->",
+        tagFilter,
         search,
         {
           text: "查询",
@@ -1063,6 +1088,61 @@
         { xtype: "tbtext", text: "第 1 页" },
       ],
     });
+    function selectedImage() {
+      var records = view.getSelectedRecords();
+      if (!records.length) {
+        Ext.Msg.alert("提示", "请先选择一张图片。");
+        return null;
+      }
+      return records[0];
+    }
+    function previewImage(record) {
+      var url = Classic.assetUrl(record.get("url"));
+      var win = new Ext.Window({
+        title: record.get("name") || "图片预览",
+        iconCls: "icon-image",
+        modal: true,
+        width: 860,
+        height: 580,
+        layout: "fit",
+        items: [
+          {
+            xtype: "box",
+            autoEl: {
+              tag: "div",
+              cls: "image-preview-wrap",
+              html:
+                '<img src="' +
+                Classic.html(url) +
+                '" alt="' +
+                Classic.html(record.get("name")) +
+                '">',
+            },
+          },
+        ],
+        buttons: [
+          {
+            text: "打开原图",
+            handler: function () {
+              if (url) window.open(url, "_blank");
+            },
+          },
+          {
+            text: "复制地址",
+            handler: function () {
+              Ext.Msg.alert("图片地址", Classic.html(url));
+            },
+          },
+          {
+            text: "关闭",
+            handler: function () {
+              win.close();
+            },
+          },
+        ],
+      });
+      win.show();
+    }
     function load() {
       Classic.api(
         "image_bed.list",
@@ -1071,11 +1151,11 @@
           offset: offset,
           sort: "time_desc",
           search: search.getValue(),
-          tag_id: null,
+          tag_id: tagFilter.getTagId(),
         },
         function (data) {
           Classic.loadArray(store, data);
-          grid
+          panel
             .getBottomToolbar()
             .items.itemAt(3)
             .setText(pagingText(offset, store.getCount()));
@@ -1146,7 +1226,7 @@
       win.show();
     }
     function rename() {
-      var r = Classic.selected(grid);
+      var r = selectedImage();
       if (!r) return;
       Ext.Msg.prompt(
         "图片重命名",
@@ -1164,9 +1244,9 @@
         r.get("name"),
       );
     }
-    grid.reloadModule = load;
-    grid.on("afterrender", load, grid, { single: true });
-    return grid;
+    panel.reloadModule = load;
+    panel.on("afterrender", load, panel, { single: true });
+    return panel;
   };
 
   Classic.modules.files = function () {

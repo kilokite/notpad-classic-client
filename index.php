@@ -6,6 +6,7 @@ try {
     $profile = trpc_query('auth.getProfile', null, current_token(), current_group_id());
     $groups = trpc_query('group.list', null, current_token(), null);
     $stats = trpc_query('setting.getUsageStats', null, current_token(), current_group_id());
+    $settings = trpc_query('setting.getAll', null, current_token(), current_group_id());
     $invites = trpc_query('group.myInvites', null, current_token(), null);
 } catch (TrpcException $e) {
     if ($e->getCode() === 401) {
@@ -16,8 +17,21 @@ try {
     $profile = isset($_SESSION['user']) ? $_SESSION['user'] : array('id' => '', 'name' => '未知用户', 'email' => '');
     $groups = array();
     $stats = array();
+    $settings = array();
     $invites = array();
     $bootError = $e->getMessage();
+}
+
+$cdnPrefix = '';
+if (is_array($settings)) {
+    if (!empty($settings['cdn_prefix'])) {
+        $cdnPrefix = $settings['cdn_prefix'];
+    } elseif (!empty($settings['asset_base_url'])) {
+        $cdnPrefix = $settings['asset_base_url'];
+    }
+}
+if ($cdnPrefix === '' && !empty($config['asset_base_url'])) {
+    $cdnPrefix = $config['asset_base_url'];
 }
 
 $boot = array(
@@ -25,9 +39,10 @@ $boot = array(
     'profile' => $profile,
     'groups' => $groups,
     'stats' => $stats,
+    'settings' => is_array($settings) ? $settings : array(),
     'invites' => $invites,
     'activeGroupId' => current_group_id(),
-    'assetBaseUrl' => isset($config['asset_base_url']) ? rtrim($config['asset_base_url'], '/') : '',
+    'assetBaseUrl' => rtrim($cdnPrefix, '/'),
     'bootError' => isset($bootError) ? $bootError : '',
     'today' => date('Y年n月j日'),
 );

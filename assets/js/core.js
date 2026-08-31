@@ -23,10 +23,33 @@ Classic.bytes = function (value) {
     return (n / 1073741824).toFixed(1) + ' GB';
 };
 
+Classic.normalizeAssetBase = function (value) {
+    return String(value || '').replace(/\/+$/, '');
+};
+
+Classic.setAssetBaseUrl = function (value) {
+    Classic.boot.assetBaseUrl = Classic.normalizeAssetBase(value);
+};
+
 Classic.assetUrl = function (value) {
     var url = String(value || '');
     if (!url || /^(?:https?:)?\/\//i.test(url)) return url;
     return Classic.boot.assetBaseUrl ? Classic.boot.assetBaseUrl + '/' + url.replace(/^\/+/, '') : url;
+};
+
+Classic.thumbUrl = function (value, width) {
+    var url = Classic.assetUrl(value);
+    if (!url) return '';
+    var sep = url.indexOf('?') >= 0 ? '&' : '?';
+    return url + sep + 'x-oss-process=image/resize,w_' + (width || 240);
+};
+
+Classic.applyCdnPrefix = function (settings) {
+    var prefix = '';
+    if (settings && settings.cdn_prefix) prefix = settings.cdn_prefix;
+    else if (settings && settings.asset_base_url) prefix = settings.asset_base_url;
+    else prefix = Classic.boot.assetBaseUrl || '';
+    Classic.setAssetBaseUrl(prefix);
 };
 
 Classic.setStatus = function (text) {
@@ -147,8 +170,34 @@ Classic.simpleTagManager = function (config) {
         }}, '-', {text: '刷新', iconCls: 'icon-refresh', handler: load}]
     });
     function load() { Classic.api(config.prefix + '.listTags', null, function (data) { Classic.loadArray(store, data); }); }
-    var win = new Ext.Window({title: config.title || '标签管理', iconCls: 'icon-tag', width: 390, height: 330, modal: true, layout: 'fit', items: grid});
+    var win = new Ext.Window({
+        title: config.title || '标签管理', iconCls: 'icon-tag', width: 390, height: 330, modal: true, layout: 'fit', items: grid,
+        listeners: {close: function () { if (config.onClose) config.onClose(); }}
+    });
     win.show(); load();
+};
+
+Classic.tagFilterCombo = function (prefix, onChange) {
+    var store = new Ext.data.ArrayStore({fields: ['id', 'name']});
+    var combo = new Ext.form.ComboBox({
+        width: 140, mode: 'local', triggerAction: 'all', editable: false,
+        valueField: 'id', displayField: 'name', store: store, value: '0'
+    });
+    combo.reloadTags = function () {
+        Classic.api(prefix + '.listTags', null, function (data) {
+            var rows = [['0', '全部标签']];
+            Ext.each(data || [], function (tag) { rows.push([String(tag.id), tag.name]); });
+            store.loadData(rows);
+            if (!combo.getValue()) combo.setValue('0');
+        }, {silent: true});
+    };
+    combo.getTagId = function () {
+        var value = combo.getValue();
+        return value && value !== '0' ? Number(value) : null;
+    };
+    if (onChange) combo.on('select', onChange);
+    combo.reloadTags();
+    return combo;
 };
 
 Classic.assignTags = function (config) {

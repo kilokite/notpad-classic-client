@@ -75,5 +75,15 @@ a:hover { text-decoration: underline; }
 .chat-line .chat-content { white-space: pre-wrap; }
 .breadcrumb-bar { padding: 5px 8px; border-bottom: 1px solid #ccc; background: #f5f5f5; color: #555; }
 .thumb-cell img { max-width: 48px; max-height: 38px; border: 1px solid #bbb; background: #fff; padding: 1px; }
+.image-thumb-wrap { padding: 10px 6px; }
+.image-thumb { display: inline-block; width: 168px; margin: 8px; vertical-align: top; cursor: pointer; border: 1px solid #99bbe8; background: #fff; }
+.image-thumb-over { border-color: #15428b; background: #eef4fb; }
+.image-thumb-selected { border-color: #15428b; background: #c3daf9; }
+.image-thumb-img { height: 126px; line-height: 126px; text-align: center; overflow: hidden; background: #f4f7fb; }
+.image-thumb-img img { max-width: 100%; max-height: 126px; vertical-align: middle; }
+.image-thumb-name { height: 34px; padding: 4px 6px; overflow: hidden; text-align: center; color: #15428b; }
+.image-empty { padding: 48px 12px; text-align: center; color: #888; }
+.image-preview-wrap { height: 100%; overflow: auto; text-align: center; background: #111; }
+.image-preview-wrap img { max-width: 100%; max-height: 100%; margin: 12px auto; }
 .x-grid3-cell-inner { line-height: 18px; }
 .x-form-item { margin-bottom: 7px; }

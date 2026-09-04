@@ -21,3 +21,5 @@ php -S 127.0.0.1:8080
 然后访问 `http://127.0.0.1:8080/login.php`。
 
 生产部署时应关闭 PHP 错误输出，启用 HTTPS，并保证 `config.php` 不包含可由浏览器直接下载的敏感信息。
+
+实现细节（网关、鉴权、模块约定、Markdown、CDN）见 [docs/architecture.md](docs/architecture.md)。

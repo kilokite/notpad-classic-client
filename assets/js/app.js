@@ -50,18 +50,8 @@ Ext.onReady(function () {
 
     var dashboard = Classic.modules.dashboard(); dashboard.itemId = 'tab-dashboard';
     Classic.tabs = new Ext.TabPanel({region: 'center', activeTab: 0, enableTabScroll: true, resizeTabs: true, minTabWidth: 95, items: [dashboard]});
-    Classic.statusText = {
-        setText: function (text) {
-            var el = Ext.get('app-status-text');
-            if (el) el.update(Classic.html(text || '就绪'));
-        }
-    };
-    var status = new Ext.Panel({
-        region: 'south', height: 24, border: false,
-        html: '<div class="app-status"><span id="app-status-text">就绪</span><span class="app-status-right">TRPC 服务：由 PHP 网关连接&nbsp;&nbsp;|&nbsp;&nbsp;ExtJS 3 管理客户端</span></div>'
-    });
 
-    new Ext.Viewport({layout: 'border', items: [header, tree, Classic.tabs, status]});
+    new Ext.Viewport({layout: 'border', items: [header, tree, Classic.tabs]});
     var mask = Ext.get('loading-mask'); if (mask) mask.fadeOut({remove: true, duration: 0.25});
     if (Classic.boot.bootError) Ext.Msg.alert('服务器提示', Classic.html(Classic.boot.bootError));
 });

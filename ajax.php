@@ -1,5 +1,7 @@
 <?php
 require __DIR__ . '/lib/bootstrap.php';
+require_once __DIR__ . '/lib/page.php';
+require_once __DIR__ . '/lib/markdown.php';
 require_login();
 
 $procedures = array(
@@ -83,6 +85,33 @@ $procedures = array(
 $request = read_json_body();
 $procedure = isset($request['procedure']) ? (string) $request['procedure'] : '';
 $input = array_key_exists('input', $request) ? $request['input'] : null;
+
+if ($procedure === 'notepad.renderNote') {
+    $id = is_array($input) && isset($input['id']) ? trim((string) $input['id']) : '';
+    if ($id === '') {
+        json_response(array('success' => false, 'message' => '缺少笔记编号'), 400);
+    }
+    try {
+        $note = trpc_query('notepad.getNoteById', array('id' => $id), current_token(), current_group_id());
+        $tags = array();
+        try {
+            $tags = trpc_query('notepad.getNoteTags', array('note_id' => $id), current_token(), current_group_id());
+        } catch (Throwable $ignore) {
+            $tags = array();
+        }
+        if (!is_array($note)) {
+            $note = array();
+        }
+        $note['html'] = render_markdown(isset($note['content']) ? $note['content'] : '');
+        $note['tags'] = is_array($tags) ? $tags : array();
+        json_response(array('success' => true, 'data' => $note));
+    } catch (TrpcException $e) {
+        if ($e->getCode() === 401) {
+            $_SESSION = array();
+        }
+        json_response(array('success' => false, 'message' => $e->getMessage()), $e->getCode() >= 400 ? $e->getCode() : 500);
+    }
+}
 
 if ($procedure === 'session.setGroup') {
     $groupId = is_array($input) && isset($input['group_id']) ? trim((string) $input['group_id']) : '';

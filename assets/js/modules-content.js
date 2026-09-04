@@ -15,26 +15,26 @@
       : 0;
     var html = [
       '<div class="dashboard-wrap"><table class="dashboard-table"><tr>',
-      '<td width="34%"><div class="dashboard-section"><h3>资料统计</h3><div class="dashboard-section-body">',
-      '<div class="stat-line">笔记总数<strong>' +
+      '<td width="34%"><div class="dashboard-section"><h3><img src="assets/icons/chart.png">资料统计</h3><div class="dashboard-section-body">',
+      '<div class="stat-line"><img src="assets/icons/notebook.png">笔记总数<strong>' +
         Classic.html(stat("notes_count")) +
         "</strong></div>",
-      '<div class="stat-line">书签总数<strong>' +
+      '<div class="stat-line"><img src="assets/icons/bookmark.png">书签总数<strong>' +
         Classic.html(stat("bookmarks_count")) +
         "</strong></div>",
-      '<div class="stat-line">图片数量<strong>' +
+      '<div class="stat-line"><img src="assets/icons/image.png">图片数量<strong>' +
         Classic.html(stat("images_count")) +
         "</strong></div>",
-      '<div class="stat-line">文件数量<strong>' +
+      '<div class="stat-line"><img src="assets/icons/document.png">文件数量<strong>' +
         Classic.html(stat("files_count")) +
         "</strong></div>",
-      '<div>占用空间<strong style="float:right;color:#15428b">' +
+      '<div class="stat-line stat-line-last"><img src="assets/icons/drive.png">占用空间<strong>' +
         Classic.bytes(
           Number(stat("images_size")) + Number(stat("files_size")),
         ) +
         "</strong></div>",
       "</div></div></td>",
-      '<td width="33%"><div class="dashboard-section"><h3>常用操作</h3><div class="dashboard-section-body">',
+      '<td width="33%"><div class="dashboard-section"><h3><img src="assets/icons/lightning.png">常用操作</h3><div class="dashboard-section-body">',
       '<a class="quick-link" href="#" onclick="Classic.openModule(\'notes\');return false"><img src="assets/icons/notebook--plus.png">新建笔记</a>',
       '<a class="quick-link" href="#" onclick="Classic.openModule(\'todo\');return false"><img src="assets/icons/tick.png">查看待办</a>',
       '<a class="quick-link" href="#" onclick="Classic.openModule(\'bookmarks\');return false"><img src="assets/icons/bookmark--plus.png">添加书签</a>',
@@ -42,19 +42,23 @@
       '<a class="quick-link" href="#" onclick="Classic.openModule(\'groups\');return false"><img src="assets/icons/users.png">群组管理</a>',
       '<a class="quick-link" href="#" onclick="Classic.openModule(\'profile\');return false"><img src="assets/icons/user--pencil.png">个人资料</a>',
       "</div></div></td>",
-      '<td><div class="dashboard-section"><h3>系统信息</h3><div class="dashboard-section-body">',
-      "<div>当前日期：" + Classic.html(Classic.boot.today) + "</div>",
-      "<div>当前用户：" +
+      '<td><div class="dashboard-section"><h3><img src="assets/icons/information.png">系统信息</h3><div class="dashboard-section-body">',
+      '<div class="info-line"><img src="assets/icons/calendar-day.png">当前日期：' +
+        Classic.html(Classic.boot.today) +
+        "</div>",
+      '<div class="info-line"><img src="assets/icons/user.png">当前用户：' +
         Classic.html(
           (Classic.boot.profile || {}).name || (Classic.boot.profile || {}).id,
         ) +
         "</div>",
-      "<div>待处理群组邀请：<strong>" + inviteCount + "</strong> 项</div>",
-      '<div>当前工作区：<span id="dashboard-workspace">' +
+      '<div class="info-line"><img src="assets/icons/mail.png">待处理群组邀请：<strong>' +
+        inviteCount +
+        "</strong> 项</div>",
+      '<div class="info-line"><img src="assets/icons/home.png">当前工作区：<span id="dashboard-workspace">' +
         (Classic.activeGroupId ? "群组资料" : "个人资料") +
         "</span></div>",
       "</div></div></td></tr><tr>",
-      '<td colspan="3"><div class="dashboard-section"><h3>最近动态</h3><div id="timeline-box" class="dashboard-section-body">正在读取最近动态...</div></div></td>',
+      '<td colspan="3"><div class="dashboard-section"><h3><img src="assets/icons/clock.png">最近动态</h3><div id="timeline-box" class="dashboard-section-body">正在读取最近动态...</div></div></td>',
       "</tr></table></div>",
     ].join("");
     var panel = new Ext.Panel({
@@ -109,14 +113,6 @@
       "created_at",
       "updated_at",
     ]);
-    var preview = new Ext.Panel({
-      region: "south",
-      height: 180,
-      split: true,
-      title: "内容预览",
-      autoScroll: true,
-      html: '<div class="note-preview muted">请选择一篇笔记。</div>',
-    });
     var search = new Ext.form.TextField({
       width: 160,
       emptyText: "在当前页查找...",
@@ -126,9 +122,9 @@
       load();
     });
     var grid = new Ext.grid.GridPanel({
-      region: "center",
+      title: "笔记管理",
+      iconCls: "icon-note",
       store: store,
-      border: false,
       stripeRows: true,
       columns: [
         {
@@ -155,6 +151,15 @@
           width: 145,
           renderer: Classic.date,
         },
+        Classic.actionColumn(
+          [
+            { act: "preview", text: "预览" },
+            { act: "edit", text: "修改" },
+            { act: "tags", text: "标签" },
+            { act: "remove", text: "删除" },
+          ],
+          230,
+        ),
       ],
       viewConfig: { forceFit: true, emptyText: "暂无笔记记录" },
       tbar: [
@@ -166,29 +171,21 @@
           },
         },
         {
-          text: "修改",
-          iconCls: "icon-edit",
-          handler: function () {
-            var r = Classic.selected(grid);
-            if (r) editNote(r);
-          },
-        },
-        { text: "删除", iconCls: "icon-delete", handler: removeNote },
-        "-",
-        {
           text: "标签管理",
           iconCls: "icon-tag",
           handler: function () {
             Classic.simpleTagManager({
               prefix: "notepad",
               title: "笔记标签管理",
+              onPreview: function (tag) {
+                Classic.openTagPreview("note", tag);
+              },
               onClose: function () {
                 tagFilter.reloadTags();
               },
             });
           },
         },
-        { text: "设置标签", iconCls: "icon-tag", handler: assignTags },
         "->",
         tagFilter,
         search,
@@ -203,7 +200,7 @@
       bbar: [
         {
           text: "上一页",
-          icon: "assets/icons/arrow-180.png",
+          iconCls: "icon-prev",
           handler: function () {
             if (page > 0) {
               page--;
@@ -213,7 +210,7 @@
         },
         {
           text: "下一页",
-          icon: "assets/icons/arrow.png",
+          iconCls: "icon-next",
           handler: function () {
             if (store.getCount() >= pageSize) {
               page++;
@@ -224,22 +221,17 @@
         "-",
         { xtype: "tbtext", id: Ext.id(null, "note-page-") },
       ],
-      listeners: {
-        rowclick: function (g, index) {
-          showNote(g.getStore().getAt(index));
-        },
-        rowdblclick: function (g, index) {
-          editNote(g.getStore().getAt(index));
-        },
+    });
+    Classic.bindRowActions(
+      grid,
+      {
+        preview: showNote,
+        edit: editNote,
+        tags: assignTags,
+        remove: removeNote,
       },
-    });
-    var panel = new Ext.Panel({
-      title: "笔记管理",
-      iconCls: "icon-note",
-      layout: "border",
-      items: [grid, preview],
-    });
-
+      showNote,
+    );
     function load() {
       Classic.api(
         "notepad.getNotes",
@@ -254,20 +246,30 @@
       });
     }
     function showNote(record) {
-      Classic.api(
-        "notepad.getNoteById",
-        { id: String(record.id) },
-        function (data) {
-          preview.setTitle(
-            "内容预览 - " + Classic.html(data.title || "未命名笔记"),
-          );
-          preview.body.update(
-            '<div class="note-preview">' +
-              Classic.html(data.content || "") +
+      var tabId = "page-note-" + record.id;
+      Classic.api("notepad.renderNote", { id: String(record.id) }, function (data) {
+        Classic.openPage(
+          tabId,
+          data.title || "笔记预览",
+          "icon-note",
+          [
+            '<div class="preview-page">',
+            "<h2>" + Classic.html(data.title || "未命名笔记") + "</h2>",
+            '<div class="preview-page-meta">建立：' +
+              Classic.html(Classic.date(data.created_at)) +
+              "　修改：" +
+              Classic.html(Classic.date(data.updated_at)) +
               "</div>",
-          );
-        },
-      );
+            '<div class="preview-page-tags">' +
+              Classic.tagChips(data.tags || []) +
+              "</div>",
+            '<div class="preview-page-body markdown-body">' +
+              (data.html || "") +
+              "</div>",
+            "</div>",
+          ].join(""),
+        );
+      });
     }
     function editNote(record) {
       if (record) {
@@ -313,8 +315,7 @@
         },
       });
     }
-    function removeNote() {
-      var record = Classic.selected(grid);
+    function removeNote(record) {
       if (!record) return;
       Classic.confirm(
         "确定删除笔记“" +
@@ -325,17 +326,13 @@
             "notepad.deleteNote",
             { id: String(record.id) },
             function () {
-              preview.body.update(
-                '<div class="note-preview muted">请选择一篇笔记。</div>',
-              );
               load();
             },
           );
         },
       );
     }
-    function assignTags() {
-      var record = Classic.selected(grid);
+    function assignTags(record) {
       if (!record) return;
       Classic.api("notepad.listTags", null, function (tags) {
         Classic.api(
@@ -359,14 +356,22 @@
             Classic.windowForm({
               title: "设置笔记标签",
               width: 390,
-              items: [
-                {
-                  xtype: "checkboxgroup",
-                  fieldLabel: "标签",
-                  columns: 2,
-                  items: checks,
-                },
-              ],
+              items: checks.length
+                ? [
+                    {
+                      xtype: "checkboxgroup",
+                      fieldLabel: "标签",
+                      columns: 2,
+                      items: checks,
+                    },
+                  ]
+                : [
+                    {
+                      xtype: "displayfield",
+                      hideLabel: true,
+                      value: '<span class="muted">暂无标签，请先在标签管理中创建。</span>',
+                    },
+                  ],
               onSave: function (values, win, form) {
                 var pending = 0,
                   complete = function () {
@@ -399,9 +404,9 @@
         );
       });
     }
-    panel.reloadModule = load;
-    panel.on("afterrender", load, panel, { single: true });
-    return panel;
+    grid.reloadModule = load;
+    grid.on("afterrender", load, grid, { single: true });
+    return grid;
   };
 
   Classic.modules.todo = function () {
@@ -438,6 +443,13 @@
             );
           },
         },
+        Classic.actionColumn(
+          [
+            { act: "edit", text: "修改" },
+            { act: "remove", text: "删除" },
+          ],
+          120,
+        ),
       ],
       viewConfig: { forceFit: true, emptyText: "暂无列表" },
       tbar: [
@@ -448,21 +460,16 @@
             editList();
           },
         },
-        {
-          text: "修改",
-          iconCls: "icon-edit",
-          handler: function () {
-            var r = Classic.selected(listGrid);
-            if (r) editList(r);
-          },
-        },
-        { text: "删除", iconCls: "icon-delete", handler: deleteList },
       ],
       listeners: {
         rowclick: function (g, index) {
           loadItems(g.store.getAt(index));
         },
       },
+    });
+    Classic.bindRowActions(listGrid, {
+      edit: editList,
+      remove: deleteList,
     });
     var itemGrid = new Ext.grid.GridPanel({
       region: "center",
@@ -506,6 +513,14 @@
             return Ext.isArray(v) ? v.length : 0;
           },
         },
+        Classic.actionColumn(
+          [
+            { act: "edit", text: "修改" },
+            { act: "toggle", text: "完成/恢复" },
+            { act: "remove", text: "删除" },
+          ],
+          200,
+        ),
       ],
       viewConfig: { forceFit: true, emptyText: "请选择列表或新建待办" },
       tbar: [
@@ -517,21 +532,6 @@
           },
         },
         {
-          text: "修改",
-          iconCls: "icon-edit",
-          handler: function () {
-            var r = Classic.selected(itemGrid);
-            if (r) editItem(r);
-          },
-        },
-        {
-          text: "完成/恢复",
-          icon: "assets/icons/tick.png",
-          handler: toggleItem,
-        },
-        { text: "删除", iconCls: "icon-delete", handler: deleteItem },
-        "-",
-        {
           text: "刷新",
           iconCls: "icon-refresh",
           handler: function () {
@@ -540,12 +540,16 @@
           },
         },
       ],
-      listeners: {
-        rowdblclick: function (g, i) {
-          editItem(g.store.getAt(i));
-        },
-      },
     });
+    Classic.bindRowActions(
+      itemGrid,
+      {
+        edit: editItem,
+        toggle: toggleItem,
+        remove: deleteItem,
+      },
+      editItem,
+    );
     var panel = new Ext.Panel({
       title: "待办事项",
       iconCls: "icon-todo",
@@ -601,8 +605,7 @@
         },
       });
     }
-    function deleteList() {
-      var r = Classic.selected(listGrid);
+    function deleteList(r) {
       if (!r) return;
       Classic.confirm(
         "删除列表将一并删除其中的待办事项，是否继续？",
@@ -660,8 +663,7 @@
         },
       });
     }
-    function toggleItem() {
-      var r = Classic.selected(itemGrid);
+    function toggleItem(r) {
       if (!r) return;
       var list = listGrid.getSelectionModel().getSelected();
       Classic.api(
@@ -672,8 +674,7 @@
         },
       );
     }
-    function deleteItem() {
-      var r = Classic.selected(itemGrid);
+    function deleteItem(r) {
       if (!r) return;
       var list = listGrid.getSelectionModel().getSelected();
       Classic.confirm("确定删除该待办事项吗？", function () {
@@ -766,13 +767,19 @@
           width: 140,
           renderer: Classic.date,
         },
+        Classic.actionColumn(
+          [
+            { act: "preview", text: "预览" },
+            { act: "open", text: "打开", icon: "assets/icons/chain.png" },
+            { act: "tags", text: "标签" },
+            { act: "remove", text: "删除" },
+          ],
+          220,
+        ),
       ],
       viewConfig: { forceFit: true, emptyText: "暂无书签记录" },
       tbar: [
         { text: "添加书签", iconCls: "icon-add", handler: addBookmark },
-        { text: "打开", iconCls: "icon-link", handler: openBookmark },
-        { text: "删除", iconCls: "icon-delete", handler: removeBookmark },
-        "-",
         {
           text: "标签管理",
           iconCls: "icon-tag",
@@ -780,27 +787,13 @@
             Classic.simpleTagManager({
               prefix: "bookmark",
               title: "书签标签管理",
+              onPreview: function (tag) {
+                Classic.openTagPreview("bookmark", tag);
+              },
               onClose: function () {
                 tagFilter.reloadTags();
               },
             });
-          },
-        },
-        {
-          text: "设置标签",
-          iconCls: "icon-tag",
-          handler: function () {
-            var r = Classic.selected(grid);
-            if (r)
-              Classic.assignTags({
-                prefix: "bookmark",
-                ownerKey: "bookmark_id",
-                ownerId: Number(r.id),
-                getProcedure: "getBookmarkTags",
-                addProcedure: "addTagToBookmark",
-                removeProcedure: "removeTagFromBookmark",
-                title: "设置书签标签",
-              });
           },
         },
         "->",
@@ -819,6 +812,7 @@
       bbar: [
         {
           text: "上一页",
+          iconCls: "icon-prev",
           handler: function () {
             offset = Math.max(0, offset - 1);
             load();
@@ -826,6 +820,7 @@
         },
         {
           text: "下一页",
+          iconCls: "icon-next",
           handler: function () {
             if (store.getCount() >= pageSize) {
               offset++;
@@ -836,8 +831,23 @@
         "-",
         { xtype: "tbtext", text: "第 1 页" },
       ],
-      listeners: { rowdblclick: openBookmark },
     });
+    Classic.bindRowActions(grid, {
+      preview: previewBookmark,
+      open: openBookmark,
+      tags: function (r) {
+        Classic.assignTags({
+          prefix: "bookmark",
+          ownerKey: "bookmark_id",
+          ownerId: Number(r.id),
+          getProcedure: "getBookmarkTags",
+          addProcedure: "addTagToBookmark",
+          removeProcedure: "removeTagFromBookmark",
+          title: "设置书签标签",
+        });
+      },
+      remove: removeBookmark,
+    }, previewBookmark);
     function load() {
       Classic.api(
         "bookmark.list",
@@ -932,15 +942,72 @@
         },
       });
     }
-    function openBookmark() {
-      var r = Classic.selected(grid);
+    function previewBookmark(r) {
+      if (!r) return;
+      var tabId = "page-bookmark-" + r.id;
+      var typeNames = {
+        url: "网页",
+        note: "笔记",
+        image: "图片",
+        file: "文件",
+      };
+      function render(tags) {
+        var url = r.get("url");
+        Classic.openPage(
+          tabId,
+          r.get("title") || "书签预览",
+          "icon-bookmark",
+          [
+            '<div class="preview-page">',
+            "<h2>" + Classic.html(r.get("title") || "未命名书签") + "</h2>",
+            '<div class="preview-page-meta">类型：' +
+              Classic.html(typeNames[r.get("type")] || r.get("type") || "") +
+              "　收藏：" +
+              Classic.html(Classic.date(r.get("created_at"))) +
+              "</div>",
+            '<div class="preview-page-tags">' + Classic.tagChips(tags) + "</div>",
+            url
+              ? '<div class="preview-page-meta">地址：<a href="' +
+                Classic.html(url) +
+                '" target="_blank">' +
+                Classic.html(url) +
+                "</a></div>"
+              : "",
+            r.get("ref_id")
+              ? '<div class="preview-page-meta">引用：' +
+                Classic.html(r.get("ref_id")) +
+                "</div>"
+              : "",
+            r.get("description")
+              ? '<div class="preview-page-body">' +
+                Classic.html(r.get("description")) +
+                "</div>"
+              : "",
+            r.get("content")
+              ? '<div class="preview-page-body">' +
+                Classic.html(r.get("content")) +
+                "</div>"
+              : "",
+            "</div>",
+          ].join(""),
+        );
+      }
+      Classic.api(
+        "bookmark.getBookmarkTags",
+        { bookmark_id: Number(r.id) },
+        function (tags) {
+          render(tags || []);
+        },
+        { silent: true, failure: function () { render([]); } },
+      );
+    }
+    function openBookmark(r) {
       if (!r) return;
       if (r.get("url")) window.open(r.get("url"), "_blank");
       else
         Ext.Msg.alert("资源引用", "引用编号：" + Classic.html(r.get("ref_id")));
     }
-    function removeBookmark() {
-      var r = Classic.selected(grid);
+    function removeBookmark(r) {
       if (!r) return;
       Classic.confirm(
         "确定删除书签“" + Classic.html(r.get("title")) + "”吗？",
@@ -997,17 +1064,29 @@
         '<div class="image-thumb" title="{[Classic.html(values.name)]}">',
         '<div class="image-thumb-img"><img src="{[Classic.html(Classic.thumbUrl(values.url, 320))]}" alt="{[Classic.html(values.name)]}"></div>',
         '<div class="image-thumb-name">{[Classic.html(values.name)]}</div>',
+        '<div class="image-thumb-actions">',
+        '{[Classic.actionHtml([{act:"preview",text:"大图"},{act:"rename",text:"重命名"},{act:"tags",text:"标签"}])]}',
+        "</div>",
         "</div>",
         "</tpl>",
         "</div>",
       ),
-      listeners: {
-        click: function (dv, index) {
-          var record = store.getAt(index);
-          if (record) previewImage(record);
-        },
-      },
     });
+    Classic.bindViewActions(view, {
+      preview: previewImage,
+      rename: rename,
+      tags: function (r) {
+        Classic.assignTags({
+          prefix: "image_bed",
+          ownerKey: "image_id",
+          ownerId: Number(r.id),
+          getProcedure: "getImageTags",
+          addProcedure: "addTagToImage",
+          removeProcedure: "removeTagFromImage",
+          title: "设置图片标签",
+        });
+      },
+    }, previewImage);
     var panel = new Ext.Panel({
       title: "图片管理",
       iconCls: "icon-image",
@@ -1015,16 +1094,6 @@
       items: view,
       tbar: [
         { text: "上传图片", iconCls: "icon-upload", handler: uploadImage },
-        { text: "重命名", iconCls: "icon-edit", handler: rename },
-        {
-          text: "查看大图",
-          iconCls: "icon-link",
-          handler: function () {
-            var r = selectedImage();
-            if (r) previewImage(r);
-          },
-        },
-        "-",
         {
           text: "标签管理",
           iconCls: "icon-tag",
@@ -1032,27 +1101,13 @@
             Classic.simpleTagManager({
               prefix: "image_bed",
               title: "图片标签管理",
+              onPreview: function (tag) {
+                Classic.openTagPreview("image", tag);
+              },
               onClose: function () {
                 tagFilter.reloadTags();
               },
             });
-          },
-        },
-        {
-          text: "设置标签",
-          iconCls: "icon-tag",
-          handler: function () {
-            var r = selectedImage();
-            if (r)
-              Classic.assignTags({
-                prefix: "image_bed",
-                ownerKey: "image_id",
-                ownerId: Number(r.id),
-                getProcedure: "getImageTags",
-                addProcedure: "addTagToImage",
-                removeProcedure: "removeTagFromImage",
-                title: "设置图片标签",
-              });
           },
         },
         "->",
@@ -1070,6 +1125,7 @@
       bbar: [
         {
           text: "上一页",
+          iconCls: "icon-prev",
           handler: function () {
             offset = Math.max(0, offset - 1);
             load();
@@ -1077,6 +1133,7 @@
         },
         {
           text: "下一页",
+          iconCls: "icon-next",
           handler: function () {
             if (store.getCount() >= pageSize) {
               offset++;
@@ -1088,14 +1145,6 @@
         { xtype: "tbtext", text: "第 1 页" },
       ],
     });
-    function selectedImage() {
-      var records = view.getSelectedRecords();
-      if (!records.length) {
-        Ext.Msg.alert("提示", "请先选择一张图片。");
-        return null;
-      }
-      return records[0];
-    }
     function previewImage(record) {
       var url = Classic.assetUrl(record.get("url"));
       var win = new Ext.Window({
@@ -1123,18 +1172,21 @@
         buttons: [
           {
             text: "打开原图",
+            iconCls: "icon-link",
             handler: function () {
               if (url) window.open(url, "_blank");
             },
           },
           {
             text: "复制地址",
+            iconCls: "icon-copy",
             handler: function () {
               Ext.Msg.alert("图片地址", Classic.html(url));
             },
           },
           {
             text: "关闭",
+            iconCls: "icon-close",
             handler: function () {
               win.close();
             },
@@ -1186,13 +1238,16 @@
         title: "上传图片",
         iconCls: "icon-upload",
         width: 470,
-        height: 220,
+        height: 280,
+        minHeight: 220,
         modal: true,
+        constrain: true,
         layout: "fit",
         items: form,
         buttons: [
           {
             text: "开始上传",
+            iconCls: "icon-upload",
             handler: function () {
               if (!form.getForm().isValid()) return;
               form.getForm().submit({
@@ -1217,6 +1272,7 @@
           },
           {
             text: "取消",
+            iconCls: "icon-close",
             handler: function () {
               win.close();
             },
@@ -1225,8 +1281,7 @@
       });
       win.show();
     }
-    function rename() {
-      var r = selectedImage();
+    function rename(r) {
       if (!r) return;
       Ext.Msg.prompt(
         "图片重命名",
@@ -1316,18 +1371,28 @@
           width: 145,
           renderer: Classic.date,
         },
+        Classic.actionColumn(function (r) {
+          if (r.get("kind") === "folder") {
+            return [
+              { act: "open", text: "打开" },
+              { act: "rename", text: "重命名" },
+            ];
+          }
+          return [
+            { act: "download", text: "下载" },
+            { act: "rename", text: "重命名" },
+          ];
+        }, 160),
       ],
       viewConfig: { forceFit: true, emptyText: "该目录中没有文件" },
       tbar: [
         {
           text: "返回上级",
-          icon: "assets/icons/arrow-180.png",
+          iconCls: "icon-prev",
           handler: goParent,
         },
         { text: "新建文件夹", iconCls: "icon-folder", handler: createFolder },
         { text: "上传文件", iconCls: "icon-upload", handler: uploadFile },
-        { text: "重命名", iconCls: "icon-edit", handler: rename },
-        { text: "下载", iconCls: "icon-download", handler: download },
         "-",
         { text: "刷新", iconCls: "icon-refresh", handler: load },
         "->",
@@ -1344,6 +1409,7 @@
       bbar: [
         {
           text: "上一页",
+          iconCls: "icon-prev",
           handler: function () {
             offset = Math.max(0, offset - 1);
             load();
@@ -1351,6 +1417,7 @@
         },
         {
           text: "下一页",
+          iconCls: "icon-next",
           handler: function () {
             if (store.getCount() >= pageSize) {
               offset++;
@@ -1361,17 +1428,19 @@
         "-",
         { xtype: "tbtext", text: "第 1 页" },
       ],
-      listeners: {
-        rowdblclick: function (g, i) {
-          var r = g.store.getAt(i);
-          if (r.get("kind") === "folder") {
-            folderId = String(r.get("id"));
-            offset = 0;
-            load();
-          } else download();
-        },
-      },
     });
+    Classic.bindRowActions(
+      grid,
+      {
+        open: openFolder,
+        download: download,
+        rename: rename,
+      },
+      function (r) {
+        if (r.get("kind") === "folder") openFolder(r);
+        else download(r);
+      },
+    );
     var panel = new Ext.Panel({
       title: "文件管理",
       iconCls: "icon-drive",
@@ -1432,8 +1501,13 @@
           );
       });
     }
-    function rename() {
-      var r = Classic.selected(grid);
+    function openFolder(r) {
+      if (!r) return;
+      folderId = String(r.get("id"));
+      offset = 0;
+      load();
+    }
+    function rename(r) {
       if (!r) return;
       Ext.Msg.prompt(
         "重命名",
@@ -1461,14 +1535,8 @@
         r.get("name"),
       );
     }
-    function download() {
-      var r = Classic.selected(grid);
+    function download(r) {
       if (!r) return;
-      if (r.get("kind") === "folder") {
-        folderId = String(r.get("id"));
-        load();
-        return;
-      }
       Classic.api(
         "file_drive.getDownloadUrl",
         { file_id: Number(r.get("id")) },
@@ -1501,13 +1569,16 @@
         title: "上传文件",
         iconCls: "icon-upload",
         width: 470,
-        height: 180,
+        height: 240,
+        minHeight: 200,
         modal: true,
+        constrain: true,
         layout: "fit",
         items: form,
         buttons: [
           {
             text: "开始上传",
+            iconCls: "icon-upload",
             handler: function () {
               if (!form.getForm().isValid()) return;
               form.getForm().submit({
@@ -1532,6 +1603,7 @@
           },
           {
             text: "取消",
+            iconCls: "icon-close",
             handler: function () {
               win.close();
             },
